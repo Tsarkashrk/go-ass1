@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/Tsarkashrk/go-ass1/internal/data"
+	"github.com/gorilla/mux"
 )
 
 type ModuleInfo struct {
@@ -57,19 +59,111 @@ func createModuleInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := getDBConnection()
-	defer db.Close() // Close the database connection after the handler finishes
+	defer db.Close() 
 
-	// Create a DBModel instance with the database connection
 	model := data.NewDBModel(db)
 
-	// Insert the ModuleInfo into the database using the DBModel
 	err = model.Insert(&moduleInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error inserting ModuleInfo into database: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Respond with a success message
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("ModuleInfo inserted successfully"))
+}
+
+func getModuleInfoHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid module ID", http.StatusBadRequest)
+		return
+	}
+
+	idUint := uint(id)
+
+	db := getDBConnection()
+	defer db.Close()
+
+	model := data.NewDBModel(db)
+	moduleInfo, err := model.Retrieve(idUint) 
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving ModuleInfo from database: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	jsonData, err := json.Marshal(moduleInfo)
+	if err != nil {
+		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+
+func editModuleInfoHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid module ID", http.StatusBadRequest)
+		return
+	}
+
+	var moduleInfo data.ModuleInfo
+	err = json.NewDecoder(r.Body).Decode(&moduleInfo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error decoding JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	db := getDBConnection()
+	defer db.Close()
+
+	model := data.NewDBModel(db)
+	existingModuleInfo, err := model.Retrieve(uint(id)) 
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving ModuleInfo: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = model.Update(existingModuleInfo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error updating ModuleInfo in database: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ModuleInfo updated successfully"))
+}
+
+func deleteModuleInfoHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid module ID", http.StatusBadRequest)
+		return
+	}
+
+	db := getDBConnection()
+	defer db.Close()
+
+	model := data.NewDBModel(db)
+	err = model.Delete(uint(id)) 
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error deleting ModuleInfo: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ModuleInfo deleted successfully"))
 }

@@ -17,33 +17,32 @@ import (
 func main() {
 	db, err := sql.Open("postgres", "postgresql://postgres:admin@localhost/a.tokeshDB?sslmode=disable")
 	if err != nil {
-		log.Fatal("Ошибка при открытии соединения:", err)
+		log.Fatal("Open Connection Error:", err)
 	}
 	defer db.Close()
 
-	// Проверяем соединение с базой данных
 	err = db.Ping()
 	if err != nil {
-		log.Fatal("Ошибка при проверке соединения:", err)
+		log.Fatal("Ping Connection Error:", err)
 	}
 
-	fmt.Println("Соединение с базой данных установлено успешно")
+	fmt.Println("DB OK")
 
 	r := mux.NewRouter()
 
 	r.HandleFunc("/", HelloWorldHandler).Methods("GET")
 	r.HandleFunc("/module", createModuleInfoHandler).Methods("POST")
-	// r.HandleFunc("/module/{id}", getModuleInfoHandler).Methods("GET")
-	// r.HandleFunc("/module/{id}", editModuleInfoHandler).Methods("PUT", "PATCH")
-	// r.HandleFunc("/module/{id}", deleteModuleInfoHandler).Methods("DELETE")
+	r.HandleFunc("/module/{id}", getModuleInfoHandler).Methods("GET")
+	r.HandleFunc("/module/{id}", editModuleInfoHandler).Methods("PUT", "PATCH")
+	r.HandleFunc("/module/{id}", deleteModuleInfoHandler).Methods("DELETE")
 
 	fmt.Println("Server started on port 8080")
 	http.ListenAndServe(":8080", r)
 
 	moduleData := map[string]interface{}{
 		"id":          1,
-		"name":        "Модуль 1",
-		"description": "Описание модуля 1",
+		"name":        "module 1",
+		"description": "module 1 desc",
 	}
 
 	jsonData, err := json.Marshal(moduleData)
@@ -52,7 +51,6 @@ func main() {
 		return
 	}
 
-	// Отправляем POST запрос на сервер
 	resp, err := http.Post("http://localhost:8080/module", "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Println("Error sending request:", err)
@@ -60,14 +58,12 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	// Читаем ответ от сервера
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
 		return
 	}
 
-	// Выводим ответ от сервера
 	fmt.Println("Response:", string(body))
 
 }
